@@ -6,6 +6,8 @@ use DNADesign\Elemental\Models\BaseElement;
 use SilverStripe\AssetAdmin\Forms\UploadField;
 use SilverStripe\Assets\File;
 use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
+use SilverStripe\Forms\Tab;
+use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\TextareaField;
@@ -101,54 +103,56 @@ class ElementAudio extends BaseElement
      */
     public function getCMSFields()
     {
-        $fields = FieldList::create(
-            TextField::create(
-                'Title',
-                _t(__CLASS__ . '.Title','Audio block name')
-            ),
-            TextareaField::create(
-                'AudioSummary',
-                _t(__CLASS__ . '.AudioSummary','Audio summary')
-            )
-                ->setDescription(_t(__CLASS__ . '.AudioSummaryDescription','Short summary introducing the audio.
-                        <strong>Up to 200 characters.</strong>'))
-                ->setMaxLength(Config::inst()->get(ElementAudio::class, 'audio_summary_max_length')),
-            OptionsetField::create(
-                _t(__CLASS__ . '.AudioType','AudioType'),
-                'Audio type',
-                $this->dbObject('AudioType')->enumValues()
-            ),
+        $fields = new FieldList(
+			$rootTab = new TabSet("Root",
+				$tabMain = new Tab('Main',
+                    TextField::create(
+                        'Title',
+                        _t(__CLASS__ . '.Title','Audio block name')
+                    ),
+                    TextareaField::create(
+                        'AudioSummary',
+                        _t(__CLASS__ . '.AudioSummary','Audio summary')
+                    )
+                        ->setDescription(_t(__CLASS__ . '.AudioSummaryDescription','Short summary introducing the audio.
+                                <strong>Up to 200 characters.</strong>'))
+                        ->setMaxLength(Config::inst()->get(ElementAudio::class, 'audio_summary_max_length')),
+                    OptionsetField::create(
+                        _t(__CLASS__ . '.AudioType','AudioType'),
+                        'Audio type',
+                        $this->dbObject('AudioType')->enumValues()
+                    ),
 
-            /**
-             * Only allowed the audio extensions which are allowed in the CMS.
-             * See {@link File::app_categories}
-             */
-            $uploadField = UploadField::create(
-                'Audio',
-                _t(__CLASS__ . '.Audio', 'Audio file')
-            )
-                ->setAllowedExtensions(Config::inst()->get(ElementAudio::class, 'allowed_extenstions'))
-                ->setDescription(_t(__CLASS__ . '.AudioDescription','Select an audio file from the Files section. 
-                                Allow formats: aif, aifc, aiff, apl, au, avr, cda, m4a, 
-                                mid, midi, mp3, ogg, ra, ram, rm, snd, wav, wma.'))
-                ->setUploadEnabled(false),
+                    /**
+                     * Only allowed the audio extensions which are allowed in the CMS.
+                     * See {@link File::app_categories}
+                     */
+                    $uploadField = UploadField::create(
+                        'Audio',
+                        _t(__CLASS__ . '.Audio', 'Audio file')
+                    )
+                        ->setAllowedExtensions(Config::inst()->get(ElementAudio::class, 'allowed_extenstions'))
+                        ->setDescription(_t(__CLASS__ . '.AudioDescription','Select an audio file from the Files section. 
+                                        Allow formats: aif, aifc, aiff, apl, au, avr, cda, m4a, 
+                                        mid, midi, mp3, ogg, ra, ram, rm, snd, wav, wma.'))
+                        ->setUploadEnabled(false),
 
-            $embedCode = TextareaField::create(
-                'EmbedCode',
-                _t(__CLASS__ . '.EmbedCode', 'Audio embed code')
-            ),
+                    $embedCode = TextareaField::create(
+                        'EmbedCode',
+                        _t(__CLASS__ . '.EmbedCode', 'Audio embed code')
+                    ),
 
-            TextField::create(
-                'TranscriptTitle',
-                _t(__CLASS__ . '.TranscriptTitle',
-                    'Audio transcript heading')
-            ),
+                    TextField::create(
+                        'TranscriptTitle',
+                        _t(__CLASS__ . '.TranscriptTitle',
+                            'Audio transcript heading')
+                    ),
 
-            HTMLEditorField::create(
-                'Transcript',
-                _t(__CLASS__ . '.Transcript', 'Transcript content')
-            )
-        );
+                    HTMLEditorField::create(
+                        'Transcript',
+                        _t(__CLASS__ . '.Transcript', 'Transcript content')
+                    )
+                )));
 
         $uploadField->displayIf('AudioType')->isEqualTo('Upload');
         $embedCode->displayIf('AudioType')->isEqualTo('Embed');
