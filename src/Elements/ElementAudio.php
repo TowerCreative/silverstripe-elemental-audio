@@ -1,124 +1,186 @@
 <?php
 
-namespace Dynamic\Elements\FileList\Elements;
+namespace Ishannz\Elements\Audio\Elements;
 
-use Colymba\BulkUpload\BulkUploader;
 use DNADesign\Elemental\Models\BaseElement;
-use Dynamic\Elements\FileList\Model\FileListObject;
+use SilverStripe\AssetAdmin\Forms\UploadField;
+use SilverStripe\Assets\File;
+use SilverStripe\Forms\HTMLEditor\HTMLEditorField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\GridField\GridFieldAddExistingAutocompleter;
-use SilverStripe\Forms\GridField\GridFieldDeleteAction;
-use SilverStripe\ORM\FieldType\DBField;
-use Symbiote\GridFieldExtensions\GridFieldOrderableRows;
+use SilverStripe\Forms\OptionsetField;
+use SilverStripe\Forms\TextareaField;
+use SilverStripe\Forms\TextField;
+use SilverStripe\Core\Config\Config;
 
-class ElementFileList extends BaseElement
+class ElementAudio extends BaseElement
 {
     /**
      * @var string
      */
-    private static $icon = 'font-icon-block-file-list';
+    private static $singular_name = 'Audio Element';
 
     /**
      * @var string
      */
-    private static $table_name = 'ElementFileList';
+    private static $plural_name = 'Audio Elements';
+
+    /**
+     * @var string
+     */
+    private static $description = 'Audio controller with audio transcript';
+
+    /**
+     * @var string
+     */
+    private static $table_name = 'ElementAudio';
 
     /**
      * @var array
      */
     private static $db = [
-        'Content' => 'HTMLText',
+        'AudioType'       => 'Enum("Upload, Embed")',
+        'Title'           => 'Varchar(255)',
+        'AudioSummary'    => 'Varchar(255)',
+        'TranscriptTitle' => 'Varchar(255)',
+        'Transcript'      => 'HTMLText',
+        'EmbedCode'       => 'Text',
     ];
 
     /**
      * @var array
      */
-    private static $has_many = [
-        'Files' => FileListObject::class,
+    private static $has_one = [
+        'Audio' => File::class,
+    ];
+
+    /**
+     * @var [type]
+     */
+    private static $defaults = [
+        'AudioType' => 'Upload',
     ];
 
     /**
      * @var array
      */
-    private static $owns = [
-        'Files',
+    private static $casting = [
+        'AudioEmbedCode' => 'HTMLText'
     ];
 
     /**
-     * @var bool
+     * @var array
      */
-    private static $inline_editable = false;
+    private static $allowed_extenstions = [
+        'aif',
+        'aifc',
+        'aiff',
+        'apl',
+        'au',
+        'avr',
+        'cda',
+        'm4a',
+        'mid',
+        'midi',
+        'mp3',
+        'ogg',
+        'ra',
+        'ram',
+        'rm',
+        'snd',
+        'wav',
+        'wma',
+    ];
 
     /**
-     * @param bool $includerelations
-     * @return array
+     * @var int
      */
-    public function fieldLabels($includerelations = true)
-    {
-        $labels = parent::fieldLabels($includerelations);
-
-        $labels['Files'] = _t(__CLASS__.'.FilesLabel', 'Files');
-
-        return $labels;
-    }
+    private static $audio_summary_max_length = 200;
 
     /**
      * @return FieldList
      */
     public function getCMSFields()
     {
-        $this->beforeUpdateCMSFields(function (FieldList $fields) {
-            $fields->dataFieldByName('Content')
-                ->setRows(8);
+        $fields = parent::getCMSFields();
+        $fields->addFieldsToTab('Root',[
+                    TextField::create(
+                        'Title',
+                        _t(__CLASS__ . '.Title','Audio block name')
+                    ),
+                    TextareaField::create(
+                        'AudioSummary',
+                        _t(__CLASS__ . '.AudioSummary','Audio summary')
+                    )
+                        ->setDescription(_t(__CLASS__ . '.AudioSummaryDescription','Short summary introducing the audio.
+                                <strong>Up to 200 characters.</strong>'))
+                        ->setMaxLength(Config::inst()->get(ElementAudio::class, 'audio_summary_max_length')),
+                    OptionsetField::create(
+                        _t(__CLASS__ . '.AudioType','AudioType'),
+                        'Audio type',
+                        $this->dbObject('AudioType')->enumValues()
+                    ),
 
-            if ($this->ID) {
-                $field = $fields->dataFieldByName('Files');
-                $fields->removeByName('Files');
+                    /**
+                     * Only allowed the audio extensions which are allowed in the CMS.
+                     * See {@link File::app_categories}
+                     */
+                    $uploadField = UploadField::create(
+                        'Audio',
+                        _t(__CLASS__ . '.Audio', 'Audio file')
+                    )
+                        ->setAllowedExtensions(Config::inst()->get(ElementAudio::class, 'allowed_extenstions'))
+                        ->setDescription(_t(__CLASS__ . '.AudioDescription','Select an audio file from the Files section. 
+                                        Allow formats: aif, aifc, aiff, apl, au, avr, cda, m4a, 
+                                        mid, midi, mp3, ogg, ra, ram, rm, snd, wav, wma.'))
+                        ->setUploadEnabled(false),
 
-                $config = $field->getConfig();
-                $config
-                    ->addComponents([
-                        new GridFieldOrderableRows('SortOrder')
-                    ])
-                    ->removeComponentsByType([
-                        GridFieldAddExistingAutocompleter::class,
-                        GridFieldDeleteAction::class
-                    ]);
-                if (class_exists(BulkUploader::class)) {
-                    $config->addComponents([
-                        new BulkUploader()
-                    ]);
-                    $config->getComponentByType(BulkUploader::class)
-                        ->setUfSetup('setFolderName', 'Uploads/Elements/FileList/');
-                }
-                $fields->addFieldToTab('Root.Main', $field);
-            }
-        });
+                    $embedCode = TextareaField::create(
+                        'EmbedCode',
+                        _t(__CLASS__ . '.EmbedCode', 'Audio embed code')
+                    ),
 
-        return parent::getCMSFields();
+                    TextField::create(
+                        'TranscriptTitle',
+                        _t(__CLASS__ . '.TranscriptTitle',
+                            'Audio transcript heading')
+                    ),
+
+                    HTMLEditorField::create(
+                        'Transcript',
+                        _t(__CLASS__ . '.Transcript', 'Transcript content')
+                    )
+                ]);
+
+        $uploadField->displayIf('AudioType')->isEqualTo('Upload');
+        $embedCode->displayIf('AudioType')->isEqualTo('Embed');
+
+        return $fields;
     }
 
     /**
-     * @return DBHTMLText
+     * Check uploading valid audio file.
+     *
+     * @return \SilverStripe\ORM\ValidationResult
      */
-    public function getSummary()
+    public function validate()
     {
-        if ($this->Files()->count() == 1) {
-            $label = ' file';
-        } else {
-            $label = ' files';
+        $result = parent::validate();
+
+        if ($this->AudioType == 'Upload' && $this->Audio()->appCategory() != 'audio') {
+            $result->addError('Invalid audio file.');
         }
-        return DBField::create_field('HTMLText', $this->Files()->count() . $label)->Summary(20);
+
+        return $result;
     }
 
     /**
-     * @return array
+     * Convert text to html
+     *
+     * @return string
      */
-    protected function provideBlockSchema()
+    public function getAudioEmbedCode()
     {
-        $blockSchema = parent::provideBlockSchema();
-        $blockSchema['content'] = $this->getSummary();
-        return $blockSchema;
+        return $this->EmbedCode;
     }
 
     /**
@@ -126,6 +188,6 @@ class ElementFileList extends BaseElement
      */
     public function getType()
     {
-        return _t(__CLASS__.'.BlockType', 'File List');
+        return _t(__CLASS__ . '.BlockType', 'Audio');
     }
 }
